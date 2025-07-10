@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar {
+    overflow-y: auto; /* Enables scrollbar */
+  }
+
+  .scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 4px;
+  }
+
+  .scrollbar::-webkit-scrollbar-track {
+    background-color: none; /* Light gray track */
+  }
+
+  .scrollbar::-webkit-scrollbar-thumb {
+    background-color: oklch(62.3% 0.214 259.815 / 70%); /* Darker gray thumb */
+    border-radius: 4px; /* Rounded corners */
+  }
+
+  .scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(62.3% 0.214 259.815); /* Darker on hover */
+  }
+}
