@@ -1,70 +1,104 @@
 import { useState, useRef, useEffect } from "react";
-import { Mic, Send, Info } from "lucide-react";
-
-const rooms = ["General", "Tech", "Random"];
+import socket from "../config/socket-config";
+import Messages from "./base/Messages";
+import Header from "./base/Header";
+import Footer from "./base/Footer";
 
 export default function App() {
   // const [selectedRoom, setSelectedRoom] = useState("General");
   const [messages, setMessages] = useState([]);
+  const [status, setStatus] = useState(null);
+  const [isMatched, setIsMatched] = useState(false);
   const [input, setInput] = useState("");
-
-  const messagesEndRef = useRef(null);
-
-  const sendMessage = () => {
-    if (input.trim()) {
-      setMessages([...messages, { room: selectedRoom, text: [input] }]);
-      setInput("");
-      console.log(messages);
-    }
-  };
+  const [connected, setConnected] = useState(false);
+  const [room, setRoom] = useState("");
 
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    socket.on("connect", () => {
+      console.log("Connected to the server!");
+    });
+
+    socket.on("matched", (room) => {
+      setStatus(null);
+      setIsMatched(true);
+      setRoom(room);
+    });
+
+    socket.on("receivedMessage", (message, id) => {
+      setMessages((prev) => [...prev, { message, userId: id }]);
+      console.log(`A message is received!`);
+    });
+
+    socket.on("wait", (status) => {
+      setStatus(status);
+    });
+
+    socket.on("strangerDisconnected", () => {
+      setConnected(false);
+      setIsMatched(false);
+      alert("Stranger Disconnected!");
+    });
+
+    return () => {
+      socket.off("matched");
+      socket.off("receivedMessage");
+      socket.off("wait");
+      socket.off("strangerDisconnected");
+    };
+  }, []);
+
+  function sendMessage() {
+    if (room && input.trim()) {
+      socket.emit("sendMessage", room, input);
+      setMessages((prev) => [...prev, { message: input, userId: null }]);
+      setInput("");
     }
-  }, [messages]);
+    console.log(messages);
+  }
+
+  // Functions
+  function handleConnection() {
+    console.log("Connection is clicked!");
+    setConnected(true);
+    socket.connect();
+  }
+
+  function handleDisconnect() {
+    console.log("Connection disconnected!");
+    setConnected(false);
+    setMessages([]);
+    setIsMatched(false);
+    socket.disconnect();
+  }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen justify-center items-center p-4 bg-gray-100">
       {/* Chat Box */}
-      <div className="w-1/4 mx-50 my-10 drop-shadow-xl flex-1 flex flex-col">
+      <div className="w-full sm:w-[90%] md:w-[70%] lg:w-[40%] h-full sm:h-[90%] drop-shadow-xl bg-white rounded-xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b bg-white shadow">
-          <h3 className="text-lg font-semibold">ChatMate</h3>
-          <Info className="w-5 h-5 cursor-pointer text-gray-500 hover:text-blue-500" />
-        </div>
+        <Header
+          connected={connected}
+          handleDisconnect={handleDisconnect}
+          status={status}
+        />
 
         {/* Messages */}
-        <div className="flex flex-col-reverse snap-y flex-1 overflow-y-auto p-4 bg-gray-50 scrollbar">
-          <div ref={messagesEndRef} />
-          {[...messages]
-            .filter((msg) => msg.room === selectedRoom)
-            .reverse()
-            .map((msg, idx) => (
-              <div key={idx} className="mb-2 flex flex-initial justify-end">
-                <div className="bg-blue-100 p-2 rounded max-w-xs w-fit">
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-        </div>
+        <Messages
+          messages={messages}
+          connected={connected}
+          handleConnection={handleConnection}
+          handleDisconnect={handleDisconnect}
+          matched={isMatched}
+        />
 
         {/* Footer */}
-        <div className="p-4 border-t bg-white flex items-center gap-2">
-          <input
-            type="text"
-            className="flex-1 border rounded px-4 py-2 focus:outline-none"
-            placeholder="Type a message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          />
-          <Mic className="w-5 h-5 cursor-pointer text-gray-500 hover:text-black" />
-          <Send
-            className="w-5 h-5 cursor-pointer text-blue-500 hover:text-blue-700"
-            onClick={sendMessage}
-          />
-        </div>
+        <Footer
+          input={input}
+          setInput={setInput}
+          sendMessage={sendMessage}
+          connected={connected}
+          status={status}
+        />
       </div>
     </div>
   );
